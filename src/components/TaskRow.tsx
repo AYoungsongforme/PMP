@@ -37,7 +37,7 @@ export default function TaskRow({ task, snapshot, onOpen }: Props) {
         aria-checked={task.status === "done"}
         onClick={(event) => {
           event.stopPropagation();
-          repo.setTaskStatus(task.id, task.status === "done" ? "todo" : "done");
+          repo.setTaskStatus(task.id, task.status === "done" ? "upcoming" : "done");
         }}
       />
 

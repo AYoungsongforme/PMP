@@ -62,7 +62,7 @@ export function seedRecords(deviceId: string): ChangeRecord[] {
       parentId: opts.parentId ?? null,
       title,
       note: opts.note ?? "",
-      status: opts.status ?? "todo",
+      status: opts.status ?? "upcoming",
       priority: opts.priority ?? "mid",
       startAt: opts.startAt ?? null,
       dueAt: opts.dueAt ?? null,
@@ -103,7 +103,7 @@ export function seedRecords(deviceId: string): ChangeRecord[] {
   });
   task("评审首页改版稿", {
     projectId: revisions.id,
-    status: "todo",
+    status: "upcoming",
     priority: "high",
     startAt: addDays(t, 6),
     dueAt: addDays(t, 10),
@@ -111,7 +111,7 @@ export function seedRecords(deviceId: string): ChangeRecord[] {
   });
   task("联调登录接口", {
     projectId: revisions.id,
-    status: "todo",
+    status: "upcoming",
     priority: "high",
     startAt: addDays(t, 11),
     dueAt: addDays(t, 16)
@@ -131,27 +131,27 @@ export function seedRecords(deviceId: string): ChangeRecord[] {
   });
   task("首页改版高保真稿", {
     projectId: revisions.id,
-    status: "review",
+    status: "doing",
     priority: "mid",
     dueAt: addDays(t, 2)
   });
   task("数据口径确认", {
     projectId: dashboard.id,
-    status: "review",
+    status: "doing",
     priority: "mid",
     dueAt: addDays(t, 1),
     tagIds: [tagCross.id]
   });
   task("迁移历史报表", {
     projectId: dashboard.id,
-    status: "todo",
+    status: "upcoming",
     priority: "mid",
     startAt: addDays(t, 4),
     dueAt: addDays(t, 12)
   });
   task("整理 Q3 成果数据", {
     projectId: review.id,
-    status: "todo",
+    status: "upcoming",
     priority: "mid",
     startAt: addDays(t, 13),
     dueAt: addDays(t, 17),

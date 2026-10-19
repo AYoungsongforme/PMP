@@ -30,6 +30,11 @@ export function liveTasks(snap: Snapshot): Task[] {
   return snap.tasks.filter((t) => t.deletedAt === null);
 }
 
+/** 还没结束的任务：未完成、也没被取消。 */
+export function isOpenTask(task: Task): boolean {
+  return task.status !== "done" && task.status !== "cancelled";
+}
+
 export function tagById(snap: Snapshot): Map<Id, Tag> {
   return new Map(snap.tags.filter((t) => t.deletedAt === null).map((t) => [t.id, t]));
 }
@@ -39,7 +44,7 @@ export function projectById(snap: Snapshot): Map<Id, Project> {
 }
 
 function isOverdue(task: Task): boolean {
-  return task.status !== "done" && task.dueAt !== null && dayDiff(task.dueAt, Date.now()) < 0;
+  return isOpenTask(task) && task.dueAt !== null && dayDiff(task.dueAt, Date.now()) < 0;
 }
 
 export function filterTasks(snap: Snapshot, view: NavView): Task[] {
@@ -52,12 +57,10 @@ export function filterTasks(snap: Snapshot, view: NavView): Task[] {
     case "inbox":
       return tasks.filter((task) => task.projectId === null);
     case "today":
-      return tasks.filter(
-        (task) => task.status !== "done" && task.dueAt !== null && dayDiff(task.dueAt, t) <= 0
-      );
+      return tasks.filter((task) => isOpenTask(task) && task.dueAt !== null && dayDiff(task.dueAt, t) <= 0);
     case "upcoming":
       return tasks.filter((task) => {
-        if (task.status === "done" || task.dueAt === null) return false;
+        if (!isOpenTask(task) || task.dueAt === null) return false;
         const d = dayDiff(task.dueAt, t);
         return d > 0 && d <= 7;
       });
@@ -78,7 +81,7 @@ export interface BadgeCounts {
 }
 
 export function badgeCounts(snap: Snapshot): BadgeCounts {
-  const tasks = liveTasks(snap).filter((task) => task.status !== "done");
+  const tasks = liveTasks(snap).filter(isOpenTask);
   const byProject = new Map<Id, number>();
   let inbox = 0;
   let todayCount = 0;
@@ -99,7 +102,7 @@ export function badgeCounts(snap: Snapshot): BadgeCounts {
 }
 
 export function sortForList(tasks: Task[]): Task[] {
-  const rank: Record<TaskStatus, number> = { doing: 0, review: 1, todo: 2, done: 3 };
+  const rank: Record<TaskStatus, number> = { upcoming: 0, doing: 1, done: 2, cancelled: 3 };
   return [...tasks].sort((a, b) => {
     if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
     if (a.status === "done" && b.status === "done") return (b.doneAt ?? 0) - (a.doneAt ?? 0);
@@ -129,7 +132,7 @@ export function applyFilters(tasks: Task[], filters: TaskFilters): Task[] {
 
     switch (filters.due) {
       case "overdue":
-        if (task.dueAt === null || dayDiff(task.dueAt, start) >= 0 || task.status === "done") return false;
+        if (task.dueAt === null || dayDiff(task.dueAt, start) >= 0 || !isOpenTask(task)) return false;
         break;
       case "today":
         if (task.dueAt === null || dayDiff(task.dueAt, start) !== 0) return false;
@@ -229,7 +232,7 @@ export function blockersOf(snap: Snapshot, task: Task): Blocking[] {
     .map((dep) => {
       const predecessor = tasks.get(dep.dependsOnId);
       if (!predecessor) return null;
-      const resolved = predecessor.status === "done";
+      const resolved = predecessor.status === "done" || predecessor.status === "cancelled";
       const violated =
         !resolved &&
         task.startAt !== null &&
@@ -251,8 +254,10 @@ export function dependentsOf(snap: Snapshot, taskId: Id): Task[] {
 
 export function blockedCount(snap: Snapshot, taskId: Id): number {
   const tasks = new Map(liveTasks(snap).map((item) => [item.id, item]));
-  return liveDependencies(snap).filter((dep) => dep.taskId === taskId && tasks.get(dep.dependsOnId)?.status !== "done")
-    .length;
+  return liveDependencies(snap).filter((dep) => {
+    const predecessor = tasks.get(dep.dependsOnId);
+    return dep.taskId === taskId && predecessor !== undefined && isOpenTask(predecessor);
+  }).length;
 }
 
 // ---------- 提醒 ----------
@@ -282,7 +287,7 @@ export interface DueReminder {
 export function dueReminders(snap: Snapshot, now: number, timeOfDayMs: number): DueReminder[] {
   const tasks = new Map(
     liveTasks(snap)
-      .filter((task) => task.status !== "done")
+      .filter(isOpenTask)
       .map((task) => [task.id, task])
   );
 
@@ -317,10 +322,10 @@ export function todayBuckets(snap: Snapshot, now: number = Date.now()): TodayBuc
 
   return {
     overdue: tasks
-      .filter((task) => task.status !== "done" && task.dueAt !== null && startOfDay(task.dueAt) < start)
+      .filter((task) => isOpenTask(task) && task.dueAt !== null && startOfDay(task.dueAt) < start)
       .sort((a, b) => (a.dueAt ?? 0) - (b.dueAt ?? 0)),
     today: tasks
-      .filter((task) => task.status !== "done" && task.dueAt !== null && startOfDay(task.dueAt) === start)
+      .filter((task) => isOpenTask(task) && task.dueAt !== null && startOfDay(task.dueAt) === start)
       .sort((a, b) => a.priority.localeCompare(b.priority)),
     doing: tasks
       .filter((task) => task.status === "doing" && task.dueAt === null)

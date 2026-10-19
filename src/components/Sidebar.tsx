@@ -5,6 +5,7 @@ import {
   ChevronDown,
   FilePlus2,
   Inbox,
+  MoreHorizontal,
   Plus,
   Search,
   Settings,
@@ -14,7 +15,7 @@ import {
 } from "lucide-react";
 import { activeProjects, archivedProjects, liveTasks, type BadgeCounts, type NavView } from "../data/select";
 import { activeTemplates, activeViews } from "../data/select";
-import type { SavedView, Snapshot } from "../data/types";
+import type { Project, SavedView, Snapshot } from "../data/types";
 
 interface Props {
   snapshot: Snapshot;
@@ -28,6 +29,8 @@ interface Props {
   onDeleteView: (id: string) => void;
   onUseTemplate: (id: string) => void;
   onDeleteTemplate: (id: string) => void;
+  onManageProject: (project: Project) => void;
+  onManageTags: () => void;
 }
 
 function isActive(nav: NavView, kind: NavView["kind"], id?: string): boolean {
@@ -47,7 +50,9 @@ export default function Sidebar({
   onApplyView,
   onDeleteView,
   onUseTemplate,
-  onDeleteTemplate
+  onDeleteTemplate,
+  onManageProject,
+  onManageTags
 }: Props) {
   const projects = activeProjects(snapshot);
   const archived = archivedProjects(snapshot);
@@ -122,18 +127,26 @@ export default function Sidebar({
       </div>
       <nav className="flex flex-col gap-0.5">
         {projects.map((project) => (
-          <button
-            key={project.id}
-            className="nav-item"
-            aria-current={isActive(nav, "project", project.id)}
-            onClick={() => onNavigate({ kind: "project", projectId: project.id })}
-          >
-            <span className="dot" style={{ background: project.color }} />
-            <span className="flex-1 truncate">{project.name}</span>
-            <span className="text-[11px]" style={{ color: "var(--faint)" }}>
-              {counts.byProject.get(project.id) || ""}
-            </span>
-          </button>
+          <div key={project.id} className="group flex items-center">
+            <button
+              className="nav-item min-w-0 flex-1"
+              aria-current={isActive(nav, "project", project.id)}
+              onClick={() => onNavigate({ kind: "project", projectId: project.id })}
+            >
+              <span className="dot" style={{ background: project.color }} />
+              <span className="flex-1 truncate">{project.name}</span>
+              <span className="text-[11px]" style={{ color: "var(--faint)" }}>
+                {counts.byProject.get(project.id) || ""}
+              </span>
+            </button>
+            <button
+              className="icon-btn h-5 w-5 opacity-0 group-hover:opacity-100"
+              aria-label={`管理项目 ${project.name}`}
+              onClick={() => onManageProject(project)}
+            >
+              <MoreHorizontal size={13} />
+            </button>
+          </div>
         ))}
         <button className="nav-item" onClick={onNewProject} style={{ color: "var(--muted)" }}>
           <Plus size={15} />
@@ -143,8 +156,13 @@ export default function Sidebar({
 
       {tags.length > 0 && (
         <>
-          <div className="px-1.5 pb-1 pt-3 text-[11px]" style={{ color: "var(--faint)" }}>
-            标签
+          <div className="flex items-center px-1.5 pb-1 pt-3">
+            <span className="text-[11px]" style={{ color: "var(--faint)" }}>
+              标签
+            </span>
+            <button className="ml-auto text-[10.5px]" style={{ color: "var(--faint)" }} onClick={onManageTags}>
+              管理
+            </button>
           </div>
           <div className="flex flex-wrap gap-1 px-1.5 pb-1">
             {tags.map((tag) => (

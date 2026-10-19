@@ -54,6 +54,7 @@ export class Repo {
   private records: ChangeRecord[] = [];
   private snapshot: Snapshot = emptySnapshot();
   private listeners = new Set<Listener>();
+  private spawnListeners = new Set<(task: Task) => void>();
   private seq = 0;
   private flushTimer: number | null = null;
 
@@ -85,8 +86,58 @@ export class Repo {
     }
     this.seq = this.records.reduce((max, r) => (r.deviceId === this.deviceId ? Math.max(max, r.seq) : max), 0);
     this.rebuild();
+    this.migrateLegacyStatuses();
     this.ready = true;
     this.emit();
+  }
+
+  /**
+   * 旧版本的状态要迁到新枚举：
+   * 待办(todo) → 即将开始(upcoming)，待评审(review) → 进行中(doing)。
+   */
+  private migrateLegacyStatuses(): void {
+    const legacy = this.snapshot.tasks.filter((task) => {
+      if (task.deletedAt !== null) return false;
+      const status = task.status as string;
+      return status === "todo" || status === "review";
+    });
+
+    const legacyViews = this.snapshot.views.filter((view) => {
+      if (view.deletedAt !== null) return false;
+      const statuses = (view.filters?.statuses ?? []) as string[];
+      return statuses.includes("todo") || statuses.includes("review");
+    });
+
+    if (legacy.length === 0 && legacyViews.length === 0) return;
+
+    const mapStatus = (status: string): TaskStatus => (status === "todo" ? "upcoming" : "doing");
+
+    this.writeBatch([
+      ...legacy.map((task) => ({
+        kind: "task" as EntityKind,
+        entityId: task.id,
+        op: "upsert" as ChangeOp,
+        patch: { status: mapStatus(task.status as string) }
+      })),
+      ...legacyViews.map((view) => ({
+        kind: "view" as EntityKind,
+        entityId: view.id,
+        op: "upsert" as ChangeOp,
+        patch: {
+          filters: {
+            ...view.filters,
+            statuses: [
+              ...new Set(
+                view.filters.statuses.map((status) => {
+                  const value = status as string;
+                  return value === "todo" || value === "review" ? mapStatus(value) : status;
+                })
+              )
+            ]
+          }
+        }
+      }))
+    ]);
   }
 
   private emit(): void {
@@ -103,6 +154,35 @@ export class Repo {
     this.rebuild();
     this.emit();
     this.scheduleFlush();
+  }
+
+  /** 批量写入：一次重建、一次通知，避免循环里反复重算。 */
+  private writeBatch(items: { kind: EntityKind; entityId: Id; op: ChangeOp; patch: Record<string, unknown> }[]): void {
+    if (items.length === 0) return;
+    const at = Date.now();
+    for (const item of items) {
+      this.seq += 1;
+      this.records.push({
+        seq: this.seq,
+        deviceId: this.deviceId,
+        at,
+        kind: item.kind,
+        entityId: item.entityId,
+        op: item.op,
+        patch: item.patch
+      });
+    }
+    this.rebuild();
+    this.emit();
+    this.scheduleFlush();
+  }
+
+  /** 订阅「生成了下一次重复任务」的事件，用于界面提示。 */
+  onTaskSpawned(listener: (task: Task) => void): () => void {
+    this.spawnListeners.add(listener);
+    return () => {
+      this.spawnListeners.delete(listener);
+    };
   }
 
   private scheduleFlush(): void {
@@ -145,8 +225,14 @@ export class Repo {
     this.updateProject(id, { status: archived ? "done" : "active" });
   }
 
-  deleteProject(id: Id): void {
-    this.write("project", id, "delete", {});
+  deleteProject(id: Id, withTasks = false): void {
+    const tasks = withTasks
+      ? this.snapshot.tasks.filter((task) => task.deletedAt === null && task.projectId === id).map((task) => task.id)
+      : [];
+    this.writeBatch([
+      { kind: "project", entityId: id, op: "delete", patch: {} },
+      ...tasks.map((taskId) => ({ kind: "task" as EntityKind, entityId: taskId, op: "delete" as ChangeOp, patch: {} }))
+    ]);
   }
 
   // ---------- 任务 ----------
@@ -159,7 +245,7 @@ export class Repo {
       parentId: null,
       title: input.title.trim() || "未命名任务",
       note: input.note ?? "",
-      status: input.status ?? "todo",
+      status: input.status ?? "upcoming",
       priority: input.priority ?? "mid",
       startAt: input.startAt ?? null,
       dueAt: input.dueAt ?? null,
@@ -213,7 +299,7 @@ export class Repo {
       parentId: task.parentId,
       title: task.title,
       note: task.note,
-      status: "todo",
+      status: "upcoming",
       priority: task.priority,
       startAt: span === null ? null : nextDue - span,
       dueAt: nextDue,
@@ -228,6 +314,7 @@ export class Repo {
       deletedAt: null
     };
     this.write("task", next.id, "upsert", { ...next });
+    for (const listener of this.spawnListeners) listener(next);
   }
 
   setTaskRepeat(id: Id, repeat: RepeatFreq | null): void {
@@ -243,6 +330,14 @@ export class Repo {
 
   deleteTask(id: Id): void {
     this.write("task", id, "delete", {});
+  }
+
+  deleteTasks(ids: Id[]): number {
+    const unique = [...new Set(ids)];
+    this.writeBatch(
+      unique.map((id) => ({ kind: "task" as EntityKind, entityId: id, op: "delete" as ChangeOp, patch: {} }))
+    );
+    return unique.length;
   }
 
   // ---------- 依赖 ----------
@@ -423,6 +518,26 @@ export class Repo {
     };
     this.write("tag", tag.id, "upsert", { ...tag });
     return tag;
+  }
+
+  renameTag(id: Id, name: string): void {
+    const next = name.trim();
+    if (!next) return;
+    this.write("tag", id, "upsert", { name: next });
+  }
+
+  /** 删除标签时，把任务里对它的引用一并摘掉。 */
+  deleteTag(id: Id): void {
+    const affected = this.snapshot.tasks.filter((task) => task.deletedAt === null && task.tagIds.includes(id));
+    this.writeBatch([
+      { kind: "tag", entityId: id, op: "delete", patch: {} },
+      ...affected.map((task) => ({
+        kind: "task" as EntityKind,
+        entityId: task.id,
+        op: "upsert" as ChangeOp,
+        patch: { tagIds: task.tagIds.filter((tagId) => tagId !== id) }
+      }))
+    ]);
   }
 
   // ---------- 备份 ----------

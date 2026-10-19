@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { RefreshCw, X } from "lucide-react";
 import { ensureInit, repo, useSnapshot } from "./state/store";
 import { useReminders } from "./state/useReminders";
-import { applyFilters, badgeCounts, filterTasks, liveTasks, sortTasks } from "./data/select";
+import { applyFilters, badgeCounts, filterTasks, liveTasks, projectById, sortTasks } from "./data/select";
 import { settingValue } from "./data/select";
 import { latestChangeAt } from "./data/publish";
 import { EMPTY_FILTERS, hasActiveFilters, type NavView, type SavedView, type SortKey, type TaskFilters } from "./data/types";
@@ -18,7 +19,10 @@ import ReminderToasts from "./components/ReminderToasts";
 import SearchOverlay from "./components/SearchOverlay";
 import FilterPanel from "./components/FilterPanel";
 import PublishDialog from "./components/PublishDialog";
-import type { Id } from "./data/types";
+import ProjectMenuDialog from "./components/ProjectMenuDialog";
+import TagDialog from "./components/TagDialog";
+import { formatShort } from "./lib/date";
+import type { Id, Project } from "./data/types";
 
 export type ViewMode = "list" | "board" | "timeline";
 
@@ -37,6 +41,9 @@ export default function App() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [manageProject, setManageProject] = useState<Project | null>(null);
+  const [showTags, setShowTags] = useState(false);
+  const [spawnToast, setSpawnToast] = useState<{ id: string; title: string; dueAt: number | null } | null>(null);
   const reminders = useReminders();
 
   useEffect(() => {
@@ -53,6 +60,18 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    return repo.onTaskSpawned((task) => {
+      setSpawnToast({ id: task.id, title: task.title, dueAt: task.dueAt });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!spawnToast) return;
+    const timer = window.setTimeout(() => setSpawnToast(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [spawnToast]);
+
   const tasks = useMemo(
     () => sortTasks(applyFilters(filterTasks(snap, nav), filters), sort),
     [snap, nav, filters, sort]
@@ -66,6 +85,7 @@ export default function App() {
     () => (openTaskId ? liveTasks(snap).find((task) => task.id === openTaskId) ?? null : null),
     [snap, openTaskId]
   );
+  const currentProject = nav.kind === "project" ? projectById(snap).get(nav.projectId) : undefined;
 
   const createTask = () => {
     const projectId = nav.kind === "project" ? nav.projectId : null;
@@ -136,6 +156,8 @@ export default function App() {
           }
         }}
         onDeleteTemplate={(id) => repo.deleteTemplate(id)}
+        onManageProject={setManageProject}
+        onManageTags={() => setShowTags(true)}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -191,6 +213,7 @@ export default function App() {
               snapshot={snap}
               nav={nav}
               tasks={tasks}
+              project={currentProject}
               onOpenTask={(id) => {
                 setFocusTitle(false);
                 setOpenTaskId(id);
@@ -239,6 +262,60 @@ export default function App() {
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
 
       {publishOpen && <PublishDialog snapshot={snap} onClose={() => setPublishOpen(false)} />}
+
+      {manageProject && (
+        <ProjectMenuDialog
+          project={manageProject}
+          snapshot={snap}
+          onClose={() => {
+            setManageProject(null);
+            if (
+              nav.kind === "project" &&
+              !snap.projects.some(
+                (project) => project.id === nav.projectId && project.deletedAt === null && project.status !== "done"
+              )
+            ) {
+              setNav({ kind: "all" });
+            }
+          }}
+        />
+      )}
+
+      {showTags && <TagDialog snapshot={snap} onClose={() => setShowTags(false)} />}
+
+      {spawnToast ? (
+        <div
+          className="fixed bottom-4 left-4 z-50 flex max-w-[320px] items-start gap-2.5 rounded-xl p-3"
+          style={{ background: "var(--bg)", border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}
+          role="status"
+        >
+          <span
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-lg"
+            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+          >
+            <RefreshCw size={14} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[12.5px]">这是重复任务，已生成下一次</div>
+            <div className="truncate text-[11px]" style={{ color: "var(--muted)" }}>
+              {spawnToast.title} · {formatShort(spawnToast.dueAt)}
+            </div>
+            <button
+              className="btn mt-1.5"
+              style={{ height: 22, fontSize: 11 }}
+              onClick={() => {
+                repo.deleteTask(spawnToast.id);
+                setSpawnToast(null);
+              }}
+            >
+              撤销生成
+            </button>
+          </div>
+          <button className="icon-btn h-5 w-5" aria-label="关闭提示" onClick={() => setSpawnToast(null)}>
+            <X size={12} />
+          </button>
+        </div>
+      ) : null}
 
       <ReminderToasts
         alerts={reminders.alerts}

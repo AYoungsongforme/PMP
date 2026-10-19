@@ -15,13 +15,13 @@ type SiteState =
 
 const PASS_KEY = "pmp:sitePassphrase";
 
-const GROUP_ORDER: TaskStatus[] = ["doing", "review", "todo", "done"];
+const GROUP_ORDER: TaskStatus[] = ["upcoming", "doing", "done", "cancelled"];
 
 const STATUS_DOT: Record<TaskStatus, string> = {
   doing: "var(--accent)",
-  review: "var(--amber)",
-  todo: "var(--faint)",
-  done: "var(--green)"
+  upcoming: "var(--faint)",
+  done: "var(--green)",
+  cancelled: "var(--red)"
 };
 
 export default function SiteApp() {
@@ -94,7 +94,7 @@ export default function SiteApp() {
   }, [loaded, current, query]);
 
   const counts = useMemo(() => {
-    const result: Record<TaskStatus, number> = { doing: 0, review: 0, todo: 0, done: 0 };
+    const result: Record<TaskStatus, number> = { upcoming: 0, doing: 0, done: 0, cancelled: 0 };
     for (const task of tasks) result[task.status] += 1;
     return result;
   }, [tasks]);
@@ -268,6 +268,15 @@ export default function SiteApp() {
                 </span>
               ))}
             </div>
+
+            {current.description.trim() ? (
+              <div
+                className="mt-4 rounded-lg px-3 py-2"
+                style={{ background: "var(--side)", border: "1px solid var(--border)" }}
+              >
+                <div className="markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(current.description) }} />
+              </div>
+            ) : null}
 
             {total === 0 ? (
               <p className="py-10 text-center text-xs" style={{ color: "var(--muted)" }}>

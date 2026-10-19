@@ -20,10 +20,10 @@ type ZoomKey = keyof typeof ZOOM;
 const ZOOM_LABEL: Record<ZoomKey, string> = { month: "月", fortnight: "两周", week: "周" };
 
 const BAR_STYLE: Record<TaskStatus, { bg: string; fg: string }> = {
-  todo: { bg: "var(--gray-soft)", fg: "var(--muted)" },
+  upcoming: { bg: "var(--gray-soft)", fg: "var(--muted)" },
   doing: { bg: "var(--accent-soft)", fg: "var(--accent)" },
-  review: { bg: "var(--amber-soft)", fg: "var(--amber)" },
-  done: { bg: "var(--green-soft)", fg: "var(--green)" }
+  done: { bg: "var(--green-soft)", fg: "var(--green)" },
+  cancelled: { bg: "var(--red-soft)", fg: "var(--red)" }
 };
 
 interface DragState {

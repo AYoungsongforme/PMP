@@ -2,21 +2,24 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { repo } from "../state/store";
 import { projectById, type NavView } from "../data/select";
-import { TASK_STATUS_LABEL, type Snapshot, type Task, type TaskStatus } from "../data/types";
+import { TASK_STATUS_LABEL, type Project, type Snapshot, type Task, type TaskStatus } from "../data/types";
 import TaskRow from "./TaskRow";
+import ProjectNotes from "./ProjectNotes";
 
 interface Props {
   snapshot: Snapshot;
   nav: NavView;
   tasks: Task[];
   onOpenTask: (id: string) => void;
+  project?: Project;
 }
 
-const GROUP_ORDER: TaskStatus[] = ["doing", "review", "todo", "done"];
+const GROUP_ORDER: TaskStatus[] = ["upcoming", "doing", "done", "cancelled"];
 
-export default function ListView({ snapshot, nav, tasks, onOpenTask }: Props) {
-  const [collapsed, setCollapsed] = useState<Set<TaskStatus>>(() => new Set(["done"]));
+export default function ListView({ snapshot, nav, tasks, onOpenTask, project }: Props) {
+  const [collapsed, setCollapsed] = useState<Set<TaskStatus>>(() => new Set(["done", "cancelled"]));
   const [draft, setDraft] = useState("");
+  const [confirmCleanup, setConfirmCleanup] = useState(false);
 
   const projects = useMemo(() => projectById(snapshot), [snapshot]);
 
@@ -42,7 +45,7 @@ export default function ListView({ snapshot, nav, tasks, onOpenTask }: Props) {
   const submitDraft = () => {
     const title = draft.trim();
     if (!title) return;
-    repo.createTask({ title, projectId: currentProjectId, status: "todo" });
+    repo.createTask({ title, projectId: currentProjectId, status: "upcoming" });
     setDraft("");
   };
 
@@ -64,6 +67,7 @@ export default function ListView({ snapshot, nav, tasks, onOpenTask }: Props) {
   if (tasks.length === 0) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-4">
+        {project ? <ProjectNotes key={project.id} project={project} /> : null}
         {quickAdd}
         <p className="mt-6 text-center text-xs" style={{ color: "var(--muted)" }}>
           这里暂时没有任务。上面输入框敲一句话再回车就能建一条。
@@ -74,6 +78,7 @@ export default function ListView({ snapshot, nav, tasks, onOpenTask }: Props) {
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-4">
+      {project ? <ProjectNotes key={project.id} project={project} /> : null}
       {quickAdd}
 
       <div className="list-head mt-4">
@@ -89,10 +94,29 @@ export default function ListView({ snapshot, nav, tasks, onOpenTask }: Props) {
         const isCollapsed = collapsed.has(group.status);
         return (
           <section key={group.status}>
-            <button className="group-head" onClick={() => toggleGroup(group.status)}>
-              {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-              {TASK_STATUS_LABEL[group.status]} · {group.items.length}
-            </button>
+            <div className="flex items-center gap-2">
+              <button className="group-head flex-1" onClick={() => toggleGroup(group.status)}>
+                {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                {TASK_STATUS_LABEL[group.status]} · {group.items.length}
+              </button>
+              {group.status === "done" ? (
+                <button
+                  className="shrink-0 pr-2 text-[10.5px]"
+                  style={{ color: confirmCleanup ? "var(--red)" : "var(--faint)" }}
+                  onMouseLeave={() => setConfirmCleanup(false)}
+                  onClick={() => {
+                    if (!confirmCleanup) {
+                      setConfirmCleanup(true);
+                      return;
+                    }
+                    repo.deleteTasks(group.items.map((task) => task.id));
+                    setConfirmCleanup(false);
+                  }}
+                >
+                  {confirmCleanup ? `确认删除 ${group.items.length} 条` : "清理"}
+                </button>
+              ) : null}
+            </div>
 
             {!isCollapsed &&
               group.items.map((task) => (

@@ -67,7 +67,7 @@ out.boardColumns = (await page.locator("div.flex.w-\\[248px\\] > div:first-child
   t.replace(/\n/g, " ")
 );
 
-const firstTodoCard = column("待办").locator("span.text-\\[13px\\]").first();
+const firstTodoCard = column("即将开始").locator("span.text-\\[13px\\]").first();
 out.boardSubject = await firstTodoCard.innerText();
 const cardBox = await firstTodoCard.boundingBox();
 const dropZone = await column("进行中").locator("div.rounded-lg").first().boundingBox();

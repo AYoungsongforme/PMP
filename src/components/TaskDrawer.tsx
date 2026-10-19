@@ -192,10 +192,23 @@ export default function TaskDrawer({ snapshot, task, focusTitle = false, onOpenT
                       </button>
                     </span>
                   ))}
+                {tags
+                  .filter((tag) => !task.tagIds.includes(tag.id))
+                  .slice(0, 12)
+                  .map((tag) => (
+                    <button
+                      key={`pick-${tag.id}`}
+                      className="chip"
+                      style={{ color: "var(--faint)" }}
+                      onClick={() => update({ tagIds: [...task.tagIds, tag.id] })}
+                    >
+                      ＋{tag.name}
+                    </button>
+                  ))}
                 <input
                   className="input"
                   style={{ width: 108, height: 24, fontSize: 12 }}
-                  placeholder="加标签"
+                  placeholder="新建标签"
                   value={tagDraft}
                   onChange={(event) => setTagDraft(event.target.value)}
                   onKeyDown={(event) => {

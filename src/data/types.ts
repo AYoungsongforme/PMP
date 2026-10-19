@@ -17,14 +17,14 @@ export interface Project extends BaseEntity {
   sortOrder: number;
 }
 
-export const TASK_STATUSES = ["todo", "doing", "review", "done"] as const;
+export const TASK_STATUSES = ["upcoming", "doing", "done", "cancelled"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
-  todo: "待办",
+  upcoming: "即将开始",
   doing: "进行中",
-  review: "待评审",
-  done: "已完成"
+  done: "已完成",
+  cancelled: "中途取消"
 };
 
 export type TaskPriority = "high" | "mid" | "low";

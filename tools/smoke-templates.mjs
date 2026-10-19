@@ -60,8 +60,8 @@ await page.waitForTimeout(500);
 await closeDrawer();
 
 out.countAfterDone = await searchCount(REPEATING);
-// 结果里挑「待办」那一条，也就是自动生成的下一次
-await page.locator("button", { hasText: REPEATING }).filter({ hasText: "待办" }).first().click();
+// 结果里挑「即将开始」那一条，也就是自动生成的下一次
+await page.locator("button", { hasText: REPEATING }).filter({ hasText: "即将开始" }).first().click();
 await page.waitForTimeout(500);
 out.nextTitle = await drawer().locator("input.input").first().inputValue();
 out.nextStatus = await drawer().locator(".pill").first().innerText();

@@ -14,6 +14,11 @@ function inline(text: string): string {
   return text
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_match, alt: string, src: string) =>
+      /^(data:image\/(png|jpe?g|webp|gif);base64,|https?:\/\/)/i.test(src)
+        ? `<img src="${src}" alt="${alt}" style="max-width:100%;border-radius:6px;margin:6px 0" />`
+        : ""
+    )
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
 }
 

@@ -30,7 +30,7 @@ interface Props {
   onOpenTask: (id: string) => void;
 }
 
-const COLUMN_ORDER: TaskStatus[] = ["todo", "doing", "review", "done"];
+const COLUMN_ORDER: TaskStatus[] = ["upcoming", "doing", "done", "cancelled"];
 
 export default function BoardView({ snapshot, tasks, currentProjectId, onOpenTask }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -83,10 +83,10 @@ export default function BoardView({ snapshot, tasks, currentProjectId, onOpenTas
 }
 
 const DOT_COLOR: Record<TaskStatus, string> = {
-  todo: "var(--faint)",
+  upcoming: "var(--faint)",
   doing: "var(--accent)",
-  review: "var(--amber)",
-  done: "var(--green)"
+  done: "var(--green)",
+  cancelled: "var(--red)"
 };
 
 function Column({

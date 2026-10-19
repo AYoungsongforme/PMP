@@ -161,7 +161,7 @@ textarea.input {
   white-space: nowrap;
 }
 
-.pill-todo {
+.pill-upcoming {
   background: var(--gray-soft);
   color: var(--muted);
 }
@@ -171,9 +171,9 @@ textarea.input {
   color: var(--accent);
 }
 
-.pill-review {
-  background: var(--amber-soft);
-  color: var(--amber);
+.pill-cancelled {
+  background: var(--red-soft);
+  color: var(--red);
 }
 
 .pill-done {
