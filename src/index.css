@@ -413,3 +413,75 @@ textarea.input {
   background: var(--gray-soft);
   font-size: 12px;
 }
+
+/* ---------- 富文本编辑器 ---------- */
+.pm-doc .ProseMirror {
+  outline: none;
+  min-height: 320px;
+  font-size: 14.5px;
+  line-height: 1.85;
+  color: var(--fg);
+}
+
+.pm-doc .ProseMirror > * + * {
+  margin-top: 0.6em;
+}
+
+.pm-doc .ProseMirror h1 {
+  margin: 20px 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.pm-doc .ProseMirror h2 {
+  margin: 18px 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.pm-doc .ProseMirror h3 {
+  margin: 14px 0 4px;
+  font-size: 15.5px;
+  font-weight: 600;
+}
+
+.pm-doc .ProseMirror ul {
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.pm-doc .ProseMirror ol {
+  padding-left: 20px;
+  list-style: decimal;
+}
+
+.pm-doc .ProseMirror blockquote {
+  padding-left: 12px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.pm-doc .ProseMirror pre {
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--gray-soft);
+  overflow-x: auto;
+  font-size: 12.5px;
+}
+
+.pm-doc .ProseMirror code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--gray-soft);
+  font-size: 12.5px;
+}
+
+.pm-doc .ProseMirror img {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+.pm-doc .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+}

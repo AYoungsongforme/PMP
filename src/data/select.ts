@@ -1,6 +1,7 @@
 import { addDays, dayDiff, startOfDay, today } from "../lib/date";
 import type {
   Dependency,
+  DocNode,
   Id,
   NavView,
   Project,
@@ -186,10 +187,17 @@ export function activeTemplates(snap: Snapshot) {
   return snap.templates.filter((template) => template.deletedAt === null).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-/** 全局搜索：任务、项目、标签一起搜。 */
-export function searchAll(snap: Snapshot, query: string): { tasks: Task[]; projects: Project[]; tags: Tag[] } {
+function plainText(html: string): string {
+  return html.replace(/<[^>]+>/g, " ");
+}
+
+/** 全局搜索：任务、项目、标签、文档一起搜。 */
+export function searchAll(
+  snap: Snapshot,
+  query: string
+): { tasks: Task[]; projects: Project[]; tags: Tag[]; docs: DocNode[] } {
   const needle = query.trim().toLowerCase();
-  if (!needle) return { tasks: [], projects: [], tags: [] };
+  if (!needle) return { tasks: [], projects: [], tags: [], docs: [] };
 
   const tasks = liveTasks(snap)
     .filter((task) => `${task.title}\n${task.note}`.toLowerCase().includes(needle))
@@ -200,7 +208,16 @@ export function searchAll(snap: Snapshot, query: string): { tasks: Task[]; proje
     .slice(0, 6);
   const tags = snap.tags.filter((tag) => tag.deletedAt === null && tag.name.toLowerCase().includes(needle)).slice(0, 6);
 
-  return { tasks, projects, tags };
+  const docs = snap.docs
+    .filter(
+      (doc) =>
+        doc.deletedAt === null &&
+        `${doc.title}\n${plainText(doc.content)}`.toLowerCase().includes(needle)
+    )
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 8);
+
+  return { tasks, projects, tags, docs };
 }
 
 export { isOverdue };

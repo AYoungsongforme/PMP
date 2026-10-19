@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { BookOpen, ChevronDown, KeyRound, Lock, Search } from "lucide-react";
+import { BookOpen, ChevronDown, FileText, Folder, KeyRound, Lock, Search } from "lucide-react";
 import { sortForList } from "../data/select";
 import { isPayload, type PublishedPayload } from "../data/publish";
-import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL, type Project, type Task, type TaskStatus } from "../data/types";
+import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL, type DocNode, type Project, type Task, type TaskStatus } from "../data/types";
 import { decryptJson, isEncryptedPayload, type EncryptedPayload } from "../lib/crypto";
 import { formatShort, startOfDay } from "../lib/date";
 import { renderMarkdown } from "../lib/markdown";
+import { sanitizeHtml } from "../lib/sanitize";
 
 type SiteState =
   | { kind: "loading" }
@@ -29,6 +30,8 @@ export default function SiteApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [openTask, setOpenTask] = useState<string | null>(null);
+  const [tab, setTab] = useState<"tasks" | "docs">("tasks");
+  const [openDocId, setOpenDocId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -240,14 +243,34 @@ export default function SiteApp() {
           </span>
         </header>
 
+        <div className="flex items-center gap-2 px-4 py-1.5" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div className="seg">
+            <button className="seg-item" aria-pressed={tab === "tasks"} onClick={() => setTab("tasks")}>
+              任务
+            </button>
+            <button
+              className="seg-item"
+              aria-pressed={tab === "docs"}
+              onClick={() => {
+                setTab("docs");
+                setOpenDocId(null);
+              }}
+            >
+              文档
+            </button>
+          </div>
+        </div>
+
         <main className="site-scroll min-h-0 flex-1 overflow-y-auto">
+          {tab === "docs" ? (
+            <DocsPane projectId={current.id} docs={data.docs ?? []} openId={openDocId} onOpen={setOpenDocId} />
+          ) : (
           <div className="mx-auto max-w-3xl px-4 py-5">
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <h1 className="text-[18px] font-medium">{current.name}</h1>
                 <p className="mt-0.5 text-xs" style={{ color: "var(--muted)" }}>
-                  {current.description || "共 " + total + " 条任务"}
-                  {doneCount > 0 ? `，已完成 ${doneCount} 条` : ""}
+                  共 {total} 条任务{doneCount > 0 ? `，已完成 ${doneCount} 条` : ""}
                 </p>
               </div>
               <div className="ml-auto flex items-center gap-2">
@@ -313,6 +336,7 @@ export default function SiteApp() {
               这是电脑端发布的只读快照，手机上可以直接看，不能修改。
             </footer>
           </div>
+          )}
         </main>
       </div>
     </div>
@@ -449,6 +473,79 @@ function UnlockScreen({
           密码只用于本机解密，不会发送到任何服务器。
         </p>
       </form>
+    </div>
+  );
+}
+
+function DocsPane({
+  projectId,
+  docs,
+  openId,
+  onOpen
+}: {
+  projectId: string;
+  docs: DocNode[];
+  openId: string | null;
+  onOpen: (id: string | null) => void;
+}) {
+  const list = docs
+    .filter((doc) => doc.deletedAt === null && doc.projectId === projectId)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const open = list.find((doc) => doc.id === openId) ?? null;
+
+  if (open) {
+    return (
+      <article className="mx-auto max-w-3xl px-4 py-5">
+        <button className="mb-3 text-[11px]" style={{ color: "var(--muted)" }} onClick={() => onOpen(null)}>
+          ← 返回文档列表
+        </button>
+        <h1 className="text-[22px] font-medium">{open.title}</h1>
+        <div className="pm-doc mt-4">
+          <div className="ProseMirror" dangerouslySetInnerHTML={{ __html: sanitizeHtml(open.content) }} />
+        </div>
+      </article>
+    );
+  }
+
+  if (list.length === 0) {
+    return (
+      <p className="py-16 text-center text-xs" style={{ color: "var(--muted)" }}>
+        这个项目还没有发布文档。
+      </p>
+    );
+  }
+
+  const depthOf = (doc: DocNode) => {
+    let depth = 0;
+    let parent = doc.parentId;
+    while (parent) {
+      depth += 1;
+      parent = list.find((item) => item.id === parent)?.parentId ?? null;
+    }
+    return depth;
+  };
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-5">
+      <h1 className="text-[18px] font-medium">文档</h1>
+      <p className="mt-0.5 text-xs" style={{ color: "var(--muted)" }}>
+        {list.filter((doc) => doc.kind === "doc").length} 篇
+      </p>
+      <div className="mt-4 flex flex-col gap-0.5">
+        {list.map((doc) => (
+          <button
+            key={doc.id}
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-left"
+            style={{ paddingLeft: 8 + depthOf(doc) * 14, color: doc.kind === "folder" ? "var(--muted)" : "var(--fg)" }}
+            onClick={() => {
+              if (doc.kind === "doc") onOpen(doc.id);
+            }}
+          >
+            {doc.kind === "folder" ? <Folder size={14} /> : <FileText size={14} />}
+            <span className="truncate">{doc.title}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

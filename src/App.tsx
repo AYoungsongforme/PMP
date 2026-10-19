@@ -11,6 +11,7 @@ import Topbar from "./components/Topbar";
 import ListView from "./components/ListView";
 import BoardView from "./components/BoardView";
 import TimelineView from "./components/TimelineView";
+import DocumentsView from "./components/DocumentsView";
 import TodayView from "./components/TodayView";
 import TaskDrawer from "./components/TaskDrawer";
 import ProjectDialog from "./components/ProjectDialog";
@@ -24,7 +25,7 @@ import TagDialog from "./components/TagDialog";
 import { formatShort } from "./lib/date";
 import type { Id, Project } from "./data/types";
 
-export type ViewMode = "list" | "board" | "timeline";
+export type ViewMode = "list" | "board" | "timeline" | "docs";
 
 export default function App() {
   const snap = useSnapshot();
@@ -43,6 +44,7 @@ export default function App() {
   const [publishOpen, setPublishOpen] = useState(false);
   const [manageProject, setManageProject] = useState<Project | null>(null);
   const [showTags, setShowTags] = useState(false);
+  const [focusDocId, setFocusDocId] = useState<string | null>(null);
   const [spawnToast, setSpawnToast] = useState<{ id: string; title: string; dueAt: number | null } | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = Number(localStorage.getItem("pmp:sidebarWidth"));
@@ -271,6 +273,8 @@ export default function App() {
                 setOpenTaskId(id);
               }}
             />
+          ) : mode === "docs" ? (
+            <DocumentsView snapshot={snap} project={currentProject} focusDocId={focusDocId} />
           ) : (
             <TimelineView
               snapshot={snap}
@@ -381,6 +385,11 @@ export default function App() {
             setMode("list");
           }}
           onPickTag={(id) => setFilters({ ...EMPTY_FILTERS, tagIds: [id] })}
+          onOpenDoc={(projectId, docId) => {
+            setNav({ kind: "project", projectId });
+            setMode("docs");
+            setFocusDocId(docId);
+          }}
           onClose={() => setSearchOpen(false)}
         />
       )}

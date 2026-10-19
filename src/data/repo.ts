@@ -19,6 +19,7 @@ import type {
   TaskPriority,
   TaskStatus,
   NavView,
+  DocNode,
   RepeatFreq,
   Template
 } from "./types";
@@ -338,6 +339,48 @@ export class Repo {
       unique.map((id) => ({ kind: "task" as EntityKind, entityId: id, op: "delete" as ChangeOp, patch: {} }))
     );
     return unique.length;
+  }
+
+  // ---------- 文档 ----------
+
+  createDoc(projectId: Id, parentId: Id | null, kind: DocNode["kind"]): DocNode {
+    const at = Date.now();
+    const siblings = this.snapshot.docs.filter((doc) => doc.deletedAt === null && doc.parentId === parentId && doc.projectId === projectId);
+    const doc: DocNode = {
+      id: createId(),
+      projectId,
+      parentId,
+      kind,
+      title: kind === "folder" ? "新建文件夹" : "未命名文档",
+      content: "",
+      tagIds: [],
+      sortOrder: siblings.length + 1,
+      createdAt: at,
+      updatedAt: at,
+      deletedAt: null
+    };
+    this.write("doc", doc.id, "upsert", { ...doc });
+    return doc;
+  }
+
+  updateDoc(id: Id, patch: Partial<DocNode>): void {
+    this.write("doc", id, "upsert", patch as Record<string, unknown>);
+  }
+
+  /** 删文件夹时把里面的文档一起软删除。 */
+  deleteDoc(id: Id): void {
+    const ids = new Set<Id>([id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const doc of this.snapshot.docs) {
+        if (doc.deletedAt === null && doc.parentId !== null && ids.has(doc.parentId) && !ids.has(doc.id)) {
+          ids.add(doc.id);
+          grew = true;
+        }
+      }
+    }
+    this.writeBatch([...ids].map((docId) => ({ kind: "doc" as EntityKind, entityId: docId, op: "delete" as ChangeOp, patch: {} })));
   }
 
   // ---------- 依赖 ----------

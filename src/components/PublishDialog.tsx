@@ -38,6 +38,7 @@ export default function PublishDialog({ snapshot, onClose }: { snapshot: Snapsho
   const liveProjects = snapshot.projects.filter((item) => item.deletedAt === null).length;
   const liveTasks = snapshot.tasks.filter((item) => item.deletedAt === null).length;
   const liveTags = snapshot.tags.filter((item) => item.deletedAt === null).length;
+  const liveDocs = snapshot.docs.filter((item) => item.deletedAt === null && item.kind === "doc").length;
 
   const publish = async (mode: "file" | "download") => {
     if (password.length < MIN_LENGTH) {
@@ -156,7 +157,7 @@ export default function PublishDialog({ snapshot, onClose }: { snapshot: Snapsho
               <div className="grid gap-2 text-xs" style={{ gridTemplateColumns: "74px minmax(0,1fr)" }}>
                 <span className="field-label">发布内容</span>
                 <span>
-                  {liveProjects} 个项目 · {liveTasks} 条任务 · {liveTags} 个标签
+                  {liveProjects} 个项目 · {liveTasks} 条任务 · {liveDocs} 篇文档 · {liveTags} 个标签
                 </span>
                 <span className="field-label">上次发布</span>
                 <span style={{ color: lastPublished ? "var(--fg)" : "var(--faint)" }}>

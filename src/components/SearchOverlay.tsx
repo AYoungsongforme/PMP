@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CornerDownLeft, Folder, Search, Tag as TagIcon } from "lucide-react";
+import { CornerDownLeft, FileText, Folder, Search, Tag as TagIcon } from "lucide-react";
 import { searchAll } from "../data/select";
 import { TASK_STATUS_LABEL, type Snapshot } from "../data/types";
 import { formatShort } from "../lib/date";
@@ -9,15 +9,17 @@ interface Props {
   onOpenTask: (id: string) => void;
   onOpenProject: (id: string) => void;
   onPickTag: (id: string) => void;
+  onOpenDoc: (projectId: string, docId: string) => void;
   onClose: () => void;
 }
 
 type Item =
   | { kind: "task"; id: string; title: string; sub: string }
   | { kind: "project"; id: string; title: string; sub: string; color: string }
-  | { kind: "tag"; id: string; title: string; sub: string };
+  | { kind: "tag"; id: string; title: string; sub: string }
+  | { kind: "doc"; id: string; title: string; sub: string; projectId: string };
 
-export default function SearchOverlay({ snapshot, onOpenTask, onOpenProject, onPickTag, onClose }: Props) {
+export default function SearchOverlay({ snapshot, onOpenTask, onOpenProject, onPickTag, onOpenDoc, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,7 +44,14 @@ export default function SearchOverlay({ snapshot, onOpenTask, onOpenProject, onP
         sub: "项目",
         color: project.color
       })),
-      ...found.tags.map((tag) => ({ kind: "tag" as const, id: tag.id, title: tag.name, sub: "标签" }))
+      ...found.tags.map((tag) => ({ kind: "tag" as const, id: tag.id, title: tag.name, sub: "标签" })),
+      ...found.docs.map((doc) => ({
+        kind: "doc" as const,
+        id: doc.id,
+        title: doc.title,
+        sub: "文档",
+        projectId: doc.projectId
+      }))
     ];
   }, [snapshot, query]);
 
@@ -55,6 +64,7 @@ export default function SearchOverlay({ snapshot, onOpenTask, onOpenProject, onP
     if (item.kind === "task") onOpenTask(item.id);
     if (item.kind === "project") onOpenProject(item.id);
     if (item.kind === "tag") onPickTag(item.id);
+    if (item.kind === "doc") onOpenDoc(item.projectId, item.id);
     onClose();
   };
 
@@ -120,6 +130,8 @@ export default function SearchOverlay({ snapshot, onOpenTask, onOpenProject, onP
                   <Search size={14} style={{ color: "var(--muted)" }} />
                 ) : item.kind === "project" ? (
                   <Folder size={14} style={{ color: "var(--muted)" }} />
+                ) : item.kind === "doc" ? (
+                  <FileText size={14} style={{ color: "var(--muted)" }} />
                 ) : (
                   <TagIcon size={14} style={{ color: "var(--muted)" }} />
                 )}

@@ -1,4 +1,4 @@
-import type { Project, Snapshot, Tag, Task } from "./types";
+import type { DocNode, Project, Snapshot, Tag, Task } from "./types";
 
 /** 发布到站点上的数据结构。只放站点真正要用的东西。 */
 export interface PublishedPayload {
@@ -8,6 +8,8 @@ export interface PublishedPayload {
   projects: Project[];
   tasks: Task[];
   tags: Tag[];
+  /** 旧版本发布的数据里没有这个字段 */
+  docs?: DocNode[];
 }
 
 export function buildPayload(snapshot: Snapshot, at: number = Date.now()): PublishedPayload {
@@ -19,7 +21,8 @@ export function buildPayload(snapshot: Snapshot, at: number = Date.now()): Publi
     publishedAt: at,
     projects: live(snapshot.projects).sort((a, b) => a.sortOrder - b.sortOrder),
     tasks: live(snapshot.tasks).sort((a, b) => a.sortOrder - b.sortOrder),
-    tags: live(snapshot.tags)
+    tags: live(snapshot.tags),
+    docs: live(snapshot.docs).sort((a, b) => a.sortOrder - b.sortOrder)
   };
 }
 

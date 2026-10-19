@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, CloudUpload, GanttChart, List, Plus, SlidersHorizontal, SquareKanban } from "lucide-react";
+import { ChevronRight, CloudUpload, FileText, GanttChart, List, Plus, SlidersHorizontal, SquareKanban } from "lucide-react";
 import type { NavView } from "../data/select";
 import { projectById } from "../data/select";
 import type { Snapshot } from "../data/types";
@@ -70,9 +70,9 @@ export default function Topbar({
             <GanttChart size={14} />
             时间轴
           </button>
-          <button className="seg-item" disabled title="下一阶段">
-            <CalendarDays size={14} />
-            日历
+          <button className="seg-item" aria-pressed={mode === "docs"} onClick={() => onMode("docs")}>
+            <FileText size={14} />
+            文档
           </button>
         </div>
         <button className="btn" aria-pressed={filterOpen} onClick={onToggleFilter}>

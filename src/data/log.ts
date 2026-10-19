@@ -30,7 +30,8 @@ const BUCKET: Record<EntityKind, keyof Snapshot> = {
   timeEntry: "timeEntries",
   setting: "settings",
   view: "views",
-  template: "templates"
+  template: "templates",
+  doc: "docs"
 };
 
 interface Mutable {
@@ -48,7 +49,8 @@ interface Mutable {
 const DEFAULTS: Partial<Record<EntityKind, Record<string, unknown>>> = {
   task: { repeat: null, seriesId: null, tagIds: [] },
   reminder: { offsetMinutes: 0, firedAt: null, snoozeUntil: null },
-  template: { tagIds: [], dueOffsetDays: null, repeat: null }
+  template: { tagIds: [], dueOffsetDays: null, repeat: null },
+  doc: { content: "", tagIds: [], parentId: null, kind: "doc" }
 };
 
 function order(a: ChangeRecord, b: ChangeRecord): number {
@@ -72,7 +74,8 @@ export function materialize(records: ChangeRecord[]): Snapshot {
     timeEntry: new Map(),
     setting: new Map(),
     view: new Map(),
-    template: new Map()
+    template: new Map(),
+    doc: new Map()
   };
 
   for (const r of [...records].sort(order)) {

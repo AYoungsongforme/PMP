@@ -70,6 +70,18 @@ export interface Template extends BaseEntity {
   sortOrder: number;
 }
 
+/** 项目内的文档节点：folder 是分组，doc 是正文。 */
+export interface DocNode extends BaseEntity {
+  projectId: Id;
+  parentId: Id | null;
+  kind: "folder" | "doc";
+  title: string;
+  /** 富文本 HTML；folder 为空 */
+  content: string;
+  tagIds: Id[];
+  sortOrder: number;
+}
+
 export interface Tag extends BaseEntity {
   name: string;
   color: string;
@@ -118,7 +130,8 @@ export type EntityKind =
   | "timeEntry"
   | "setting"
   | "view"
-  | "template";
+  | "template"
+  | "doc";
 
 export type NavView =
   | { kind: "all" }
@@ -181,6 +194,7 @@ export interface EntityMap {
   setting: Setting;
   view: SavedView;
   template: Template;
+  doc: DocNode;
 }
 
 export interface Snapshot {
@@ -194,6 +208,7 @@ export interface Snapshot {
   settings: Setting[];
   views: SavedView[];
   templates: Template[];
+  docs: DocNode[];
 }
 
 export function emptySnapshot(): Snapshot {
@@ -207,7 +222,8 @@ export function emptySnapshot(): Snapshot {
     timeEntries: [],
     settings: [],
     views: [],
-    templates: []
+    templates: [],
+    docs: []
   };
 }
 
