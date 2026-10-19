@@ -16,6 +16,14 @@
 
 想让开机自动启动：按 `Win+R` 输入 `shell:startup`，把 `启动.cmd` 的快捷方式丢进去。
 
+## 发布到手机
+
+1. 点顶栏「发布」，设密码（至少 8 位），选「加密并写入文件」
+2. 双击项目根目录的 `发布.cmd`，它会提交并推送这次发布
+3. 等 GitHub Actions 跑完，手机打开站点并输入同一个密码
+
+密码忘记不可恢复；仓库里只有密文。
+
 ## 打不开怎么办
 
 | 现象 | 原因 | 处理 |
@@ -46,6 +54,8 @@ node tools/smoke-reminders.mjs http://localhost:5181/  # 今日视图 / 提醒 /
 node tools/smoke-search.mjs http://localhost:5181/     # 全局搜索 / 筛选 / 保存视图
 node tools/smoke-templates.mjs http://localhost:5180/  # 重复任务 / 模板 / 本地服务
 node tools/smoke-site.mjs http://localhost:5182/       # 只读站点（vite preview --config vite.site.config.ts）
+node tools/e2e-publish.mjs http://localhost:5181/ out.json   # 发布加密端到端
+node tools/e2e-site.mjs http://localhost:5182/               # 站点解锁端到端
 ```
 
 ## 现在能做什么
@@ -63,6 +73,8 @@ node tools/smoke-site.mjs http://localhost:5182/       # 只读站点（vite pre
 - 保存视图：把「看哪儿 + 哪个视图 + 筛选 + 排序」存成侧边栏里的一个入口，点一下就还原
 - 重复任务：每天 / 每个工作日 / 每周 / 每月。完成后自动生成下一次
 - 任务模板：在任务详情里「存为模板」，之后在侧边栏「模板」区点一下就能建任务
+- 加密发布：顶栏「发布」→ 设密码 → 自动加密并写入 `public/data/published.json`
+- 手机只读站：GitHub Pages 上的版本，输入同一个密码解锁，支持项目切换与任务展开
 - 任务详情抽屉：标题、状态、所属项目、优先级、起止日期、标签、Markdown 备注（带预览）
 - 快速新增：输入框敲一句话回车即建任务
 - 新建项目：名称 + 颜色

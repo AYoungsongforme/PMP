@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ensureInit, repo, useSnapshot } from "./state/store";
 import { useReminders } from "./state/useReminders";
 import { applyFilters, badgeCounts, filterTasks, liveTasks, sortTasks } from "./data/select";
+import { settingValue } from "./data/select";
+import { latestChangeAt } from "./data/publish";
 import { EMPTY_FILTERS, hasActiveFilters, type NavView, type SavedView, type SortKey, type TaskFilters } from "./data/types";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
@@ -15,6 +17,7 @@ import SettingsDialog from "./components/SettingsDialog";
 import ReminderToasts from "./components/ReminderToasts";
 import SearchOverlay from "./components/SearchOverlay";
 import FilterPanel from "./components/FilterPanel";
+import PublishDialog from "./components/PublishDialog";
 import type { Id } from "./data/types";
 
 export type ViewMode = "list" | "board" | "timeline";
@@ -33,6 +36,7 @@ export default function App() {
   const [sort, setSort] = useState<SortKey>("default");
   const [filterOpen, setFilterOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const reminders = useReminders();
 
   useEffect(() => {
@@ -54,6 +58,10 @@ export default function App() {
     [snap, nav, filters, sort]
   );
   const counts = useMemo(() => badgeCounts(snap), [snap]);
+  const publishDirty = useMemo(() => {
+    const last = Number(settingValue(snap, "lastPublishedAt", "0"));
+    return latestChangeAt(snap) > last;
+  }, [snap]);
   const openTask = useMemo(
     () => (openTaskId ? liveTasks(snap).find((task) => task.id === openTaskId) ?? null : null),
     [snap, openTaskId]
@@ -140,6 +148,8 @@ export default function App() {
           filterCount={filterCount}
           filterOpen={filterOpen}
           onToggleFilter={() => setFilterOpen((prev) => !prev)}
+          publishDirty={publishDirty}
+          onPublish={() => setPublishOpen(true)}
         />
 
         {filterOpen ? (
@@ -227,6 +237,8 @@ export default function App() {
       {creatingProject && <ProjectDialog onClose={() => setCreatingProject(false)} />}
 
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+
+      {publishOpen && <PublishDialog snapshot={snap} onClose={() => setPublishOpen(false)} />}
 
       <ReminderToasts
         alerts={reminders.alerts}

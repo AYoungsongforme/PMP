@@ -1,17 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
-import { BookOpen, ChevronDown, Lock, Search } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { BookOpen, ChevronDown, KeyRound, Lock, Search } from "lucide-react";
 import { sortForList } from "../data/select";
-import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL, type Project, type Tag, type Task, type TaskStatus } from "../data/types";
+import { isPayload, type PublishedPayload } from "../data/publish";
+import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL, type Project, type Task, type TaskStatus } from "../data/types";
+import { decryptJson, isEncryptedPayload, type EncryptedPayload } from "../lib/crypto";
 import { formatShort, startOfDay } from "../lib/date";
 import { renderMarkdown } from "../lib/markdown";
 
-interface PublishedData {
-  version: number;
-  publishedAt: number;
-  projects: Project[];
-  tasks: Task[];
-  tags: Tag[];
-}
+type SiteState =
+  | { kind: "loading" }
+  | { kind: "locked"; payload: EncryptedPayload }
+  | { kind: "ready"; data: PublishedPayload }
+  | { kind: "error"; message: string };
+
+const PASS_KEY = "pmp:sitePassphrase";
 
 const GROUP_ORDER: TaskStatus[] = ["doing", "review", "todo", "done"];
 
@@ -23,38 +25,73 @@ const STATUS_DOT: Record<TaskStatus, string> = {
 };
 
 export default function SiteApp() {
-  const [data, setData] = useState<PublishedData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<SiteState>({ kind: "loading" });
   const [projectId, setProjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [openTask, setOpenTask] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("./data/published.json", { cache: "no-cache" })
-      .then((response) => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const response = await fetch("./data/published.json", { cache: "no-cache" });
         if (!response.ok) throw new Error(`读取发布数据失败（HTTP ${response.status}）`);
-        return response.json() as Promise<PublishedData>;
-      })
-      .then((json) => setData(json))
-      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)));
+        const json: unknown = await response.json();
+
+        if (isEncryptedPayload(json)) {
+          const saved = localStorage.getItem(PASS_KEY);
+          if (saved) {
+            try {
+              const decrypted: unknown = await decryptJson(json, saved);
+              if (isPayload(decrypted)) {
+                if (alive) setState({ kind: "ready", data: decrypted });
+                return;
+              }
+            } catch {
+              localStorage.removeItem(PASS_KEY);
+            }
+          }
+          if (alive) setState({ kind: "locked", payload: json });
+          return;
+        }
+
+        if (isPayload(json)) {
+          if (alive) setState({ kind: "ready", data: json });
+          return;
+        }
+
+        throw new Error("发布数据的格式不正确");
+      } catch (cause) {
+        if (alive) {
+          setState({ kind: "error", message: cause instanceof Error ? cause.message : String(cause) });
+        }
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
+  const loaded = state.kind === "ready" ? state.data : null;
+
   const projects = useMemo(
-    () => (data ? data.projects.filter((project) => project.deletedAt === null).sort((a, b) => a.sortOrder - b.sortOrder) : []),
-    [data]
+    () => (loaded ? loaded.projects.filter((project) => project.deletedAt === null).sort((a, b) => a.sortOrder - b.sortOrder) : []),
+    [loaded]
   );
 
   const current: Project | undefined = projects.find((project) => project.id === projectId) ?? projects[0];
 
   const tasks = useMemo(() => {
-    if (!data || !current) return [];
+    if (!loaded || !current) return [];
     const needle = query.trim().toLowerCase();
-    const list = data.tasks.filter((task) => task.deletedAt === null && task.projectId === current.id);
+    const list = loaded.tasks.filter((task) => task.deletedAt === null && task.projectId === current.id);
     const filtered = needle
       ? list.filter((task) => `${task.title}\n${task.note}`.toLowerCase().includes(needle))
       : list;
     return sortForList(filtered);
-  }, [data, current, query]);
+  }, [loaded, current, query]);
 
   const counts = useMemo(() => {
     const result: Record<TaskStatus, number> = { doing: 0, review: 0, todo: 0, done: 0 };
@@ -62,13 +99,21 @@ export default function SiteApp() {
     return result;
   }, [tasks]);
 
-  if (error) {
+  if (state.kind === "loading") {
+    return (
+      <div className="grid h-full place-items-center text-sm" style={{ color: "var(--muted)" }}>
+        正在读取发布数据…
+      </div>
+    );
+  }
+
+  if (state.kind === "error") {
     return (
       <div className="grid h-full place-items-center px-6 text-center">
         <div className="max-w-sm">
           <p className="font-medium">还没有可看的发布内容</p>
           <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
-            {error}
+            {state.message}
           </p>
           <p className="mt-3 text-[11px]" style={{ color: "var(--faint)" }}>
             回到电脑上点一次「发布」，这里就会出现最新的快照。
@@ -78,13 +123,19 @@ export default function SiteApp() {
     );
   }
 
-  if (!data || !current) {
+  if (state.kind === "locked") {
+    return <UnlockScreen payload={state.payload} onUnlocked={(next) => setState({ kind: "ready", data: next })} />;
+  }
+
+  if (!current) {
     return (
       <div className="grid h-full place-items-center text-sm" style={{ color: "var(--muted)" }}>
-        正在读取发布数据…
+        这个快照里还没有项目。
       </div>
     );
   }
+
+  const data = state.data;
 
   const total = tasks.length;
   const doneCount = counts.done;
@@ -150,6 +201,16 @@ export default function SiteApp() {
             只读快照
           </div>
           <div className="px-1.5 pt-1">发布于 {formatShort(data.publishedAt)}</div>
+          <button
+            className="mt-1.5 px-1.5 text-left"
+            style={{ color: "var(--muted)" }}
+            onClick={() => {
+              localStorage.removeItem(PASS_KEY);
+              window.location.reload();
+            }}
+          >
+            锁定 / 清除本机密码
+          </button>
         </div>
       </aside>
 
@@ -294,6 +355,91 @@ function TaskItem({
           )}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function UnlockScreen({
+  payload,
+  onUnlocked
+}: {
+  payload: EncryptedPayload;
+  onUnlocked: (data: PublishedPayload) => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!password) {
+      setError("请输入密码");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      const decrypted: unknown = await decryptJson(payload, password);
+      if (!isPayload(decrypted)) throw new Error("bad payload");
+      if (remember) localStorage.setItem(PASS_KEY, password);
+      else localStorage.removeItem(PASS_KEY);
+      onUnlocked(decrypted);
+    } catch {
+      setError("密码不对，或者数据已损坏");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="grid h-full place-items-center px-5">
+      <form onSubmit={submit} className="w-full max-w-[340px]">
+        <div className="mb-4 flex flex-col items-center text-center">
+          <span
+            className="grid h-10 w-10 place-items-center rounded-xl"
+            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+          >
+            <Lock size={18} />
+          </span>
+          <h1 className="mt-3 text-[15px] font-medium">这份内容已加密</h1>
+          <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+            输入你在电脑上发布时设置的密码
+          </p>
+        </div>
+
+        <input
+          className="input"
+          type="password"
+          autoFocus
+          autoComplete="current-password"
+          placeholder="发布密码"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+
+        <label className="mt-2.5 flex items-center gap-2 text-[11.5px]" style={{ color: "var(--muted)" }}>
+          <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
+          在这台设备上记住密码
+        </label>
+
+        {error ? (
+          <p className="mt-2 text-[11.5px]" style={{ color: "var(--red)" }}>
+            {error}
+          </p>
+        ) : null}
+
+        <button className="btn btn-primary mt-3 w-full justify-center" type="submit" disabled={busy}>
+          <KeyRound size={14} />
+          {busy ? "解锁中…" : "解锁"}
+        </button>
+
+        <p className="mt-3 text-center text-[11px]" style={{ color: "var(--faint)" }}>
+          密码只用于本机解密，不会发送到任何服务器。
+        </p>
+      </form>
     </div>
   );
 }

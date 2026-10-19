@@ -20,15 +20,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
 
-      # 用 npm 安装，绕开 pnpm 11 的「安装脚本审批」机制。
-      # 本地仍可用 pnpm，两边依赖版本一致。
-      - run: npm install --no-audit --no-fund
+      # pnpm 11 会把「被拦截的安装脚本」当成错误退出。
+      # esbuild / tailwind 的二进制来自各平台的预编译包，跳过脚本不影响构建。
+      - run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - run: npm run build:site
+      - run: pnpm build:site
 
       - uses: actions/configure-pages@v5
 

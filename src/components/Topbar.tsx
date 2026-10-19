@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, GanttChart, List, Plus, SlidersHorizontal, SquareKanban } from "lucide-react";
+import { CalendarDays, ChevronRight, CloudUpload, GanttChart, List, Plus, SlidersHorizontal, SquareKanban } from "lucide-react";
 import type { NavView } from "../data/select";
 import { projectById } from "../data/select";
 import type { Snapshot } from "../data/types";
@@ -13,6 +13,8 @@ interface Props {
   filterCount: number;
   filterOpen: boolean;
   onToggleFilter: () => void;
+  publishDirty: boolean;
+  onPublish: () => void;
 }
 
 const TITLES: Record<NavView["kind"], string> = {
@@ -32,7 +34,9 @@ export default function Topbar({
   onNewTask,
   filterCount,
   filterOpen,
-  onToggleFilter
+  onToggleFilter,
+  publishDirty,
+  onPublish
 }: Props) {
   const project = nav.kind === "project" ? projectById(snapshot).get(nav.projectId) : undefined;
   const title = project?.name ?? TITLES[nav.kind];
@@ -78,6 +82,13 @@ export default function Topbar({
             <span className="pill" style={{ background: "var(--accent)", color: "#fff", padding: "0 5px" }}>
               {filterCount}
             </span>
+          ) : null}
+        </button>
+        <button className="btn" onClick={onPublish} title={publishDirty ? "有未发布的改动" : "发布到 GitHub Pages"}>
+          <CloudUpload size={14} />
+          发布
+          {publishDirty ? (
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--amber)" }} aria-label="有未发布的改动" />
           ) : null}
         </button>
         <button className="btn btn-primary" onClick={onNewTask}>
