@@ -29,7 +29,9 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      # pnpm 11 会把「被拦截的安装脚本」当成错误退出。
+      # esbuild / tailwind 的二进制来自各平台的预编译包，跳过脚本不影响构建。
+      - run: pnpm install --frozen-lockfile --ignore-scripts
 
       - run: pnpm build:site
 
