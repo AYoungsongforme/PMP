@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { ensureInit, repo, useSnapshot } from "./state/store";
 import { useReminders } from "./state/useReminders";
@@ -44,6 +44,12 @@ export default function App() {
   const [manageProject, setManageProject] = useState<Project | null>(null);
   const [showTags, setShowTags] = useState(false);
   const [spawnToast, setSpawnToast] = useState<{ id: string; title: string; dueAt: number | null } | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = Number(localStorage.getItem("pmp:sidebarWidth"));
+    return Number.isFinite(saved) && saved >= 180 && saved <= 460 ? saved : 236;
+  });
+  const [resizing, setResizing] = useState(false);
+  const dragging = useRef(false);
   const reminders = useReminders();
 
   useEffect(() => {
@@ -139,6 +145,7 @@ export default function App() {
   return (
     <div className="flex h-full">
       <Sidebar
+        width={sidebarWidth}
         snapshot={snap}
         nav={nav}
         counts={counts}
@@ -158,6 +165,41 @@ export default function App() {
         onDeleteTemplate={(id) => repo.deleteTemplate(id)}
         onManageProject={setManageProject}
         onManageTags={() => setShowTags(true)}
+      />
+
+      <div
+        className="resizer hidden md:block"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="调整侧栏宽度"
+        data-dragging={resizing}
+        onDoubleClick={() => {
+          setSidebarWidth(236);
+          localStorage.setItem("pmp:sidebarWidth", "236");
+        }}
+        onPointerDown={(event) => {
+          dragging.current = true;
+          setResizing(true);
+          event.currentTarget.setPointerCapture(event.pointerId);
+          event.preventDefault();
+        }}
+        onPointerMove={(event) => {
+          if (!dragging.current) return;
+          setSidebarWidth(Math.min(460, Math.max(180, event.clientX)));
+        }}
+        onPointerUp={(event) => {
+          if (!dragging.current) return;
+          dragging.current = false;
+          setResizing(false);
+          const next = Math.min(460, Math.max(180, event.clientX));
+          setSidebarWidth(next);
+          localStorage.setItem("pmp:sidebarWidth", String(next));
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={() => {
+          dragging.current = false;
+          setResizing(false);
+        }}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">

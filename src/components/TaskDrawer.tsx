@@ -179,11 +179,11 @@ export default function TaskDrawer({ snapshot, task, focusTitle = false, onOpenT
                   .map((id) => tags.find((tag) => tag.id === id))
                   .filter((tag) => tag !== undefined)
                   .map((tag) => (
-                    <span key={tag.id} className="chip">
+                    <span key={tag.id} className="chip min-w-0 max-w-full">
                       <TagIcon size={10} className="mr-1" />
-                      {tag.name}
+                      <span className="truncate">{tag.name}</span>
                       <button
-                        className="ml-1"
+                        className="ml-1 shrink-0"
                         style={{ color: "var(--faint)" }}
                         onClick={() => removeTag(tag.id)}
                         aria-label={`移除标签 ${tag.name}`}

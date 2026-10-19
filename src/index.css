@@ -184,12 +184,40 @@ textarea.input {
 .chip {
   display: inline-flex;
   align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   padding: 1px 6px;
   border-radius: 4px;
   background: var(--gray-soft);
   color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
+}
+
+/* 侧栏与主区之间的拖拽条 */
+.resizer {
+  width: 5px;
+  flex: none;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  touch-action: none;
+}
+
+.resizer::after {
+  content: "";
+  position: absolute;
+  inset: 0 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.resizer:hover::after,
+.resizer[data-dragging="true"]::after {
+  background: var(--accent);
+  opacity: 0.45;
 }
 
 .tone-high {

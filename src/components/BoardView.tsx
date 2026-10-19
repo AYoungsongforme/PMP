@@ -216,9 +216,9 @@ function CardBody({ task, snapshot, dragging = false }: { task: Task; snapshot: 
 
       <div className="flex flex-wrap gap-1">
         {project ? (
-          <span className="chip">
+          <span className="chip min-w-0 max-w-full">
             <span className="dot mr-1" style={{ background: project.color, width: 7, height: 7 }} />
-            {project.name}
+            <span className="truncate">{project.name}</span>
           </span>
         ) : null}
         {task.tagIds
@@ -226,8 +226,8 @@ function CardBody({ task, snapshot, dragging = false }: { task: Task; snapshot: 
           .filter((tag) => tag !== undefined)
           .slice(0, 2)
           .map((tag) => (
-            <span key={tag.id} className="chip">
-              {tag.name}
+            <span key={tag.id} className="chip min-w-0 max-w-full">
+              <span className="truncate">{tag.name}</span>
             </span>
           ))}
       </div>

@@ -31,6 +31,7 @@ interface Props {
   onDeleteTemplate: (id: string) => void;
   onManageProject: (project: Project) => void;
   onManageTags: () => void;
+  width?: number;
 }
 
 function isActive(nav: NavView, kind: NavView["kind"], id?: string): boolean {
@@ -52,7 +53,8 @@ export default function Sidebar({
   onUseTemplate,
   onDeleteTemplate,
   onManageProject,
-  onManageTags
+  onManageTags,
+  width = 236
 }: Props) {
   const projects = activeProjects(snapshot);
   const archived = archivedProjects(snapshot);
@@ -63,8 +65,8 @@ export default function Sidebar({
 
   return (
     <aside
-      className="hidden w-[236px] shrink-0 flex-col gap-0.5 overflow-y-auto p-2 md:flex"
-      style={{ background: "var(--side)", borderRight: "1px solid var(--border)" }}
+      className="hidden shrink-0 flex-col gap-0.5 overflow-y-auto p-2 md:flex"
+      style={{ width, background: "var(--side)", borderRight: "1px solid var(--border)" }}
     >
       <div className="flex items-center gap-2 px-1.5 pb-2.5 pt-1 font-medium">
         <span

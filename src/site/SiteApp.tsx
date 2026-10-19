@@ -217,7 +217,7 @@ export default function SiteApp() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex flex-wrap items-center gap-2.5 px-4 py-2" style={{ borderBottom: "1px solid var(--border)" }}>
           <span className="dot" style={{ background: current.color }} />
-          <span className="font-medium">{current.name}</span>
+          <span className="truncate font-medium">{current.name}</span>
           <span className="chip md:hidden">只读</span>
           <select
             className="input ml-auto w-auto md:hidden"
